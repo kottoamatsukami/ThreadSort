@@ -75,7 +75,7 @@ void* merge_sort(void* arg)
 
 int main()
 {
-    srand(time(0));
+    srand(time(0)); //comment this to get same values every time
 	for (int i = 0; i < SIZE; i++)
 		a[i] = rand() % 10000;
 
@@ -103,6 +103,14 @@ int main()
 
 	cout << "\nTime taken: " << ((end - start) / 
 			(double)CLOCKS_PER_SEC) * 1000 << " millisec" << endl;
+
+	bool isSorted = true;
+    for (int i = 1; i < SIZE; i++)
+    {
+        if(a[i-1] > a[i])
+            isSorted = false;
+    }
+    isSorted ? cout << "SORTED" << endl : cout << "UNSORTED" << endl;
 
 	return 0;
 }
