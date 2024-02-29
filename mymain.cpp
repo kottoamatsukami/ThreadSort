@@ -1,11 +1,12 @@
 #include <iostream>
 #include <pthread.h>
-#include <time.h>
+// #include <time.h>
+#include <chrono>
 #include <array>
 #include <vector>
  
-#define SIZE           1000
-#define THREAD_COUNT   25
+#define SIZE           1000000
+#define THREAD_COUNT   16
 #define PROFILING_DEEP 10
 
 using namespace std;
@@ -133,13 +134,13 @@ int main()
 {
     srand(time(0)); //comment this to get same values every time
     // I will make profiling
-    double average_time = 0;
+    std::chrono::duration<double> average_time;
     for (int epoch = 0; epoch < PROFILING_DEEP; epoch++) 
     {
         for (int i = 0; i < SIZE; i++)
             a[i] = rand() % 10000;
 
-        clock_t start, end;
+        // clock_t start, end;
         array<pthread_t,THREAD_COUNT> threads{};
 
         make_partition(a);
@@ -148,7 +149,8 @@ int main()
         //     cout << i << " ";
         // cout << "\n";
 
-        start = clock();
+        // start = clock();
+        const auto start{std::chrono::steady_clock::now()};
 
         int part_count = THREAD_COUNT;
 
@@ -213,7 +215,8 @@ int main()
             return 0;
         }
 
-        end = clock();
+        // end = clock();
+        const auto end{std::chrono::steady_clock::now()};
         a.clear();
         a.resize(SIZE);
         parts.clear();
@@ -226,9 +229,9 @@ int main()
     //    {
     //        cout << a[i] << " ";
     //    }
-
-        average_time += ((end - start) / (double)CLOCKS_PER_SEC) * 1000;
-        cout << "\nTime taken: " << ((end - start) / (double)CLOCKS_PER_SEC) * 1000 << " millisec" << "\n";
+        const std::chrono::duration<double> elapsed_seconds{end - start};
+        average_time += elapsed_seconds;
+        cout << "\nTime taken: " << elapsed_seconds.count() * 1000 << " millisec" << "\n";
 
 //        bool isSorted = true;
 //        for (int i = 1; i < SIZE; i++)
@@ -239,6 +242,6 @@ int main()
 //        isSorted ? cout << "SORTED" << endl : cout << "UNSORTED" << endl;
     }
     average_time /= PROFILING_DEEP;
-    cout << "AVERAGE TIME IS " << average_time << " millisec" << "\n";
+    cout << "AVERAGE TIME IS " << average_time.count() * 1000 << " millisec" << "\n";
     return 0;
 }
