@@ -5,7 +5,7 @@
 #include <vector>
  
 #define SIZE           1000
-#define THREAD_COUNT   4
+#define THREAD_COUNT   25
 #define PROFILING_DEEP 10
 
 using namespace std;
@@ -134,8 +134,8 @@ int main()
     srand(time(0)); //comment this to get same values every time
     // I will make profiling
     double average_time = 0;
-    for (int epoch = 0; epoch < PROFILING_DEEP; epoch++) {
-
+    for (int epoch = 0; epoch < PROFILING_DEEP; epoch++) 
+    {
         for (int i = 0; i < SIZE; i++)
             a[i] = rand() % 10000;
 
@@ -143,6 +143,10 @@ int main()
         array<pthread_t,THREAD_COUNT> threads{};
 
         make_partition(a);
+
+        // for(auto i : parts)
+        //     cout << i << " ";
+        // cout << "\n";
 
         start = clock();
 
@@ -162,6 +166,7 @@ int main()
 
             for (int i = 0; i < THREAD_COUNT; i++)
                 pthread_join(threads[i], NULL);
+
             while(part_count > 2)
             {
                 part = 0;
@@ -210,10 +215,17 @@ int main()
 
         end = clock();
         a.clear();
-//        for (int i = 0; i < SIZE; i++)
-//        {
-//            cout << a[i] << " ";
-//        }
+        a.resize(SIZE);
+        parts.clear();
+        part = 0;
+
+    //     for(auto i : parts)
+    //         cout << i << " ";
+    //     cout << "\n";
+    //    for (int i = 0; i < SIZE; i++)
+    //    {
+    //        cout << a[i] << " ";
+    //    }
 
         average_time += ((end - start) / (double)CLOCKS_PER_SEC) * 1000;
         cout << "\nTime taken: " << ((end - start) / (double)CLOCKS_PER_SEC) * 1000 << " millisec" << "\n";
