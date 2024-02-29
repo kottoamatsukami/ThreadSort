@@ -4,9 +4,10 @@
 #include <array>
 #include <vector>
  
-#define SIZE 100
-#define THREAD_COUNT 4
- 
+#define SIZE           1000
+#define THREAD_COUNT   25
+#define PROFILING_DEEP 10
+
 using namespace std;
  
 vector<int> a(SIZE);
@@ -131,95 +132,113 @@ void* merge_sorted_parts(void* arg)
 int main()
 {
     srand(time(0)); //comment this to get same values every time
-    for (int i = 0; i < SIZE; i++)
-        a[i] = rand() % 10000;
- 
-    clock_t start, end;
-    array<pthread_t,THREAD_COUNT> threads;
-
-    make_partition(a);
-
-    start = clock();
-    
-    int part_count = THREAD_COUNT;
-
-    if(part_count >= SIZE/2)
+    // I will make profiling
+    double average_time = 0;
+    for (int epoch = 0; epoch < PROFILING_DEEP; epoch++) 
     {
-        return 0;
-    }
-    else if(part_count >= 2)
-    {
-        for (int i = 0; i < THREAD_COUNT; i++)
-            pthread_create(&threads[i], 
-                            NULL, 
-                            merge_sort,
-                            (void*)NULL);
-    
-        for (int i = 0; i < THREAD_COUNT; i++)
-            pthread_join(threads[i], NULL);
-        while(part_count > 2)
+        for (int i = 0; i < SIZE; i++)
+            a[i] = rand() % 10000;
+
+        clock_t start, end;
+        array<pthread_t,THREAD_COUNT> threads{};
+
+        make_partition(a);
+
+        // for(auto i : parts)
+        //     cout << i << " ";
+        // cout << "\n";
+
+        start = clock();
+
+        int part_count = THREAD_COUNT;
+
+        if(part_count >= SIZE / 2)
         {
-            part = 0;
-            if(parts.size() % 2 != 0) //if even number of parts (size should be odd)
+            return 0;
+        }
+        else if(part_count >= 2)
+        {
+            for (int i = 0; i < THREAD_COUNT; i++)
+                pthread_create(&threads[i],
+                               NULL,
+                               merge_sort,
+                               (void*)NULL);
+
+            for (int i = 0; i < THREAD_COUNT; i++)
+                pthread_join(threads[i], NULL);
+
+            while(part_count > 2)
             {
-                for (int i = 0; i < part_count; i += 2)
-                    pthread_create(&threads[i], 
-                                    NULL, 
-                                    merge_sorted_parts,
-                                    (void*)NULL);
-                for (int i = 0; i < part_count; i += 2)
-                    pthread_join(threads[i], NULL);
+                part = 0;
+                if(parts.size() % 2 != 0) //if even number of parts (size should be odd)
+                {
+                    for (int i = 0; i < part_count; i += 2)
+                        pthread_create(&threads[i],
+                                       NULL,
+                                       merge_sorted_parts,
+                                       (void*)NULL);
+                    for (int i = 0; i < part_count; i += 2)
+                        pthread_join(threads[i], NULL);
+                }
+                else
+                {
+                    int thread_part = 0;
+
+                    int low = parts[thread_part];
+                    int mid = parts[thread_part+1];
+                    int high = parts[thread_part+2];
+
+                    merge(low, mid, high);
+
+                    parts.erase(parts.begin() + 1);
+                    part_count--;
+                    continue;
+                }
+
+                for(int i = parts.size() - 2; i >= 1; i -= 2)
+                {
+                    parts.erase(parts.begin() + i);
+                }
+                part_count /= 2;
             }
-            else
-            {
-                int thread_part = 0;
 
-                int low = parts[thread_part];
-                int mid = parts[thread_part+1];
-                int high = parts[thread_part+2];
-
-                merge(low, mid, high);
-
-                parts.erase(parts.begin() + 1);
-                part_count--;
-                continue;
-            }
-
-            for(int i = parts.size() - 2; i >= 1; i -= 2)
-            {
-                parts.erase(parts.begin() + i);
-            }
-            part_count /= 2;
+            merge(parts[0], parts[1], parts[2]);
+        }
+        else if(part_count == 1)
+        {
+            merge_sort(0, SIZE);
+        }
+        else
+        {
+            return 0;
         }
 
-        merge(parts[0], parts[1], parts[2]);
-    }
-    else if(part_count == 1)
-    {
-        merge_sort(0, SIZE);
-    }
-    else
-    {
-        return 0;
-    }
+        end = clock();
+        a.clear();
+        a.resize(SIZE);
+        parts.clear();
+        part = 0;
 
-    end = clock();
+    //     for(auto i : parts)
+    //         cout << i << " ";
+    //     cout << "\n";
+    //    for (int i = 0; i < SIZE; i++)
+    //    {
+    //        cout << a[i] << " ";
+    //    }
 
-    for (int i = 0; i < SIZE; i++)
-    {
-        cout << a[i] << " ";
-    }
-    
-    cout << "\nTime taken: " << ((end - start) / 
-			(double)CLOCKS_PER_SEC) * 1000 << " millisec" << "\n";
+        average_time += ((end - start) / (double)CLOCKS_PER_SEC) * 1000;
+        cout << "\nTime taken: " << ((end - start) / (double)CLOCKS_PER_SEC) * 1000 << " millisec" << "\n";
 
-    bool isSorted = true;
-    for (int i = 1; i < SIZE; i++)
-    {
-        if(a[i-1] > a[i])
-            isSorted = false;
+//        bool isSorted = true;
+//        for (int i = 1; i < SIZE; i++)
+//        {
+//            if(a[i-1] > a[i])
+//                isSorted = false;
+//        }
+//        isSorted ? cout << "SORTED" << endl : cout << "UNSORTED" << endl;
     }
-    isSorted ? cout << "SORTED" << endl : cout << "UNSORTED" << endl;
-    
+    average_time /= PROFILING_DEEP;
+    cout << "AVERAGE TIME IS " << average_time << " millisec" << "\n";
     return 0;
 }
