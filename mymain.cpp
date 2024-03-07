@@ -1,24 +1,21 @@
 #include <iostream>
 #include <pthread.h>
-// #include <time.h>
-#include <chrono>
+#include <fstream>
 #include <array>
 #include <vector>
- 
-#define SIZE           1000000
-#define THREAD_COUNT   16
-#define PROFILING_DEEP 10
+
+#define THREAD_COUNT   4
 
 using namespace std;
  
-vector<int> a(SIZE);
+vector<int> a;
 int part = 0;
 vector<int> parts;
 
 
 void make_partition(vector<int> a)
 {
-    int step = (a.size()-1)/THREAD_COUNT;
+    int step = ( a.size() - 1 )/THREAD_COUNT;
     if(step == 0) {return;}
 
     int len = 0;
@@ -132,116 +129,94 @@ void* merge_sorted_parts(void* arg)
 // Driver Code
 int main()
 {
-    srand(time(0)); //comment this to get same values every time
-    // I will make profiling
-    std::chrono::duration<double> average_time;
-    for (int epoch = 0; epoch < PROFILING_DEEP; epoch++) 
+    // Read the file
+    std::fstream file("../input.txt", std::ios_base::in);
+
+    int cur_number;
+    while (file >> cur_number)
     {
-        for (int i = 0; i < SIZE; i++)
-            a[i] = rand() % 10000;
+        a.push_back(cur_number);
+    }
 
-        // clock_t start, end;
-        array<pthread_t,THREAD_COUNT> threads{};
+    array<pthread_t,THREAD_COUNT> threads{};
+    make_partition(a);
 
-        make_partition(a);
+    int part_count = THREAD_COUNT;
 
-        // for(auto i : parts)
-        //     cout << i << " ";
-        // cout << "\n";
+    if(part_count >= a.size() / 2)
+    {
+        return 0;
+    }
+    else if(part_count >= 2)
+    {
+        for (int i = 0; i < THREAD_COUNT; i++)
+            pthread_create(&threads[i],
+                           NULL,
+                           merge_sort,
+                           (void*)NULL);
 
-        // start = clock();
-        const auto start{std::chrono::steady_clock::now()};
+        for (int i = 0; i < THREAD_COUNT; i++)
+            pthread_join(threads[i], NULL);
 
-        int part_count = THREAD_COUNT;
-
-        if(part_count >= SIZE / 2)
+        while(part_count > 2)
         {
-            return 0;
-        }
-        else if(part_count >= 2)
-        {
-            for (int i = 0; i < THREAD_COUNT; i++)
-                pthread_create(&threads[i],
-                               NULL,
-                               merge_sort,
-                               (void*)NULL);
-
-            for (int i = 0; i < THREAD_COUNT; i++)
-                pthread_join(threads[i], NULL);
-
-            while(part_count > 2)
+            part = 0;
+            if(parts.size() % 2 != 0) //if even number of parts (size should be odd)
             {
-                part = 0;
-                if(parts.size() % 2 != 0) //if even number of parts (size should be odd)
-                {
-                    for (int i = 0; i < part_count; i += 2)
-                        pthread_create(&threads[i],
-                                       NULL,
-                                       merge_sorted_parts,
-                                       (void*)NULL);
-                    for (int i = 0; i < part_count; i += 2)
-                        pthread_join(threads[i], NULL);
-                }
-                else
-                {
-                    int thread_part = 0;
+                for (int i = 0; i < part_count; i += 2)
+                    pthread_create(&threads[i],
+                                   NULL,
+                                   merge_sorted_parts,
+                                   (void*)NULL);
+                for (int i = 0; i < part_count; i += 2)
+                    pthread_join(threads[i], NULL);
+            }
+            else
+            {
+                int thread_part = 0;
 
-                    int low = parts[thread_part];
-                    int mid = parts[thread_part+1];
-                    int high = parts[thread_part+2];
+                int low = parts[thread_part];
+                int mid = parts[thread_part+1];
+                int high = parts[thread_part+2];
 
-                    merge(low, mid, high);
+                merge(low, mid, high);
 
-                    parts.erase(parts.begin() + 1);
-                    part_count--;
-                    continue;
-                }
-
-                for(int i = parts.size() - 2; i >= 1; i -= 2)
-                {
-                    parts.erase(parts.begin() + i);
-                }
-                part_count /= 2;
+                parts.erase(parts.begin() + 1);
+                part_count--;
+                continue;
             }
 
-            merge(parts[0], parts[1], parts[2]);
-        }
-        else if(part_count == 1)
-        {
-            merge_sort(0, SIZE);
-        }
-        else
-        {
-            return 0;
+            for(int i = parts.size() - 2; i >= 1; i -= 2)
+            {
+                parts.erase(parts.begin() + i);
+            }
+            part_count /= 2;
         }
 
-        // end = clock();
-        const auto end{std::chrono::steady_clock::now()};
-        a.clear();
-        a.resize(SIZE);
-        parts.clear();
-        part = 0;
-
-    //     for(auto i : parts)
-    //         cout << i << " ";
-    //     cout << "\n";
-    //    for (int i = 0; i < SIZE; i++)
-    //    {
-    //        cout << a[i] << " ";
-    //    }
-        const std::chrono::duration<double> elapsed_seconds{end - start};
-        average_time += elapsed_seconds;
-        cout << "\nTime taken: " << elapsed_seconds.count() * 1000 << " millisec" << "\n";
-
-//        bool isSorted = true;
-//        for (int i = 1; i < SIZE; i++)
-//        {
-//            if(a[i-1] > a[i])
-//                isSorted = false;
-//        }
-//        isSorted ? cout << "SORTED" << endl : cout << "UNSORTED" << endl;
+        merge(parts[0], parts[1], parts[2]);
     }
-    average_time /= PROFILING_DEEP;
-    cout << "AVERAGE TIME IS " << average_time.count() * 1000 << " millisec" << "\n";
+    else if(part_count == 1)
+    {
+        merge_sort(0, a.size());
+    }
+    else
+    {
+        return 0;
+    }
+
+    // Save the file
+    ofstream out_file;
+    out_file.open("../out.txt");
+    if (out_file.is_open()) {
+        for (int i : a)
+        {
+            out_file << i << '\n';
+        }
+    }
+    else {
+        std::cerr << "Error opening file\n";
+    }
+
+
     return 0;
 }
